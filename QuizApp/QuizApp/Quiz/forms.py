@@ -3,7 +3,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.db import transaction
 from django.forms.utils import ValidationError
 
-from Quiz.models import (Choice, Question, Student, StudentAnswer,
+from Quiz.models import (Question, Student, StudentAnswer,
                               Subject, User)
 
 
@@ -40,6 +40,9 @@ class StudentSignUpForm(UserCreationForm):
 
 
 class StudentInterestsForm(forms.ModelForm):
+    '''
+        Basic form for students to fill out their interests.
+    '''
     class Meta:
         model = Student
         fields = ('interests', )
@@ -52,6 +55,15 @@ class QuestionForm(forms.ModelForm):
     class Meta:
         model = Question
         fields = ('text', )
+
+
+class ShareTeacherForm(forms.ModelForm):
+    '''
+        Form for sharing the selected quiz with another teacher. Contains only username.
+    '''
+    class Meta:
+        model = User
+        fields = ('username', )
 
 
 class BaseAnswerInlineFormSet(forms.BaseInlineFormSet):
@@ -68,6 +80,9 @@ class BaseAnswerInlineFormSet(forms.BaseInlineFormSet):
             raise ValidationError('Mark at least one answer as correct.', code='no_correct_answer')
 
 class TakeQuizForm(forms.ModelForm):
+    '''
+        Form for students to take quizzes.
+    '''
     answer = forms.ModelMultipleChoiceField(
         queryset=None,
         widget=forms.CheckboxSelectMultiple,

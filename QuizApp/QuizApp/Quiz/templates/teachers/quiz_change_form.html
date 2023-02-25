@@ -19,8 +19,13 @@
         {% csrf_token %}
         {{ form|crispy }}
         <button type="submit" class="btn btn-success">Save changes</button>
-        <a href="{% url 'teachers:quiz_change_list' %}" class="btn btn-outline-secondary" role="button">Nevermind</a>
-        <a href="{% url 'teachers:quiz_delete' quiz.pk %}" class="btn btn-danger float-right">Delete</a>
+        <a href="{% url 'teachers:quiz_change_list' %}" class="btn btn-outline-secondary" role="button">Don't save</a>
+        <div class="float-right">
+          <span><a href="{% url 'teachers:quiz_share' quiz.pk %}" class="btn btn-primary">Share</a></span>
+          {% if not shared_quiz %}
+            <span><a href="{% url 'teachers:quiz_delete' quiz.pk %}" class="btn btn-danger">Delete</a></span>
+          {% endif %}
+        </div>
       </form>
     </div>
   </div>
