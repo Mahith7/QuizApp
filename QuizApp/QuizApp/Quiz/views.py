@@ -11,7 +11,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
 
 from Quiz.forms import BaseAnswerInlineFormSet, QuestionForm, ShareTeacherForm, StudentInterestsForm, StudentSignUpForm, TakeQuizForm, TeacherSignUpForm
-from Quiz.models import Choice, Quiz, Question, Student, TakenQuiz, User
+from Quiz.models import Choice, Quiz, Question, Student, StudentAnswer, TakenQuiz, User
 from Quiz.utils import student_required, teacher_required
 
 class SignUpView(TemplateView):
@@ -109,7 +109,8 @@ def take_quiz(request, pk):
                     student_correct_answers = 0
                     for question in quiz.questions.values_list('pk', flat=True):
                         if set(Choice.objects.filter(question=question, is_correct=True).values_list('pk', flat=True))\
-                            == set(student_answer.answer.filter(question=question).values_list('pk', flat=True)):
+                            == set(StudentAnswer.objects.filter(answer__question=question).distinct(). \
+                                   first().answer.values_list('pk', flat=True)):
                             student_correct_answers += 1
                     score = round((student_correct_answers / total_questions) * 100.0, 2)
                     TakenQuiz.objects.create(student=student, quiz=quiz, score=score)
@@ -235,7 +236,6 @@ class QuizResultsView(DetailView):
             'quiz_score': quiz_score
         }
         kwargs.update(extra_context)
-        print(kwargs)
         return super().get_context_data(**kwargs)
 
     def get_queryset(self):
