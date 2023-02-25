@@ -4,12 +4,13 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Avg, Count
 from django.forms import inlineformset_factory
+from django.http import HttpResponseNotFound
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
 
-from Quiz.forms import BaseAnswerInlineFormSet, QuestionForm, StudentInterestsForm, StudentSignUpForm, TakeQuizForm, TeacherSignUpForm
+from Quiz.forms import BaseAnswerInlineFormSet, QuestionForm, ShareTeacherForm, StudentInterestsForm, StudentSignUpForm, TakeQuizForm, TeacherSignUpForm
 from Quiz.models import Choice, Quiz, Question, Student, TakenQuiz, User
 from Quiz.utils import student_required, teacher_required
 
@@ -27,8 +28,9 @@ class StudentSignUpView(CreateView):
         return super().get_context_data(**kwargs)
 
     def form_valid(self, form):
-        # This method is called when valid form data has been POSTed.
-        # It should return an HttpResponse.
+        '''
+            Returns an HTTP Response. Called when request is POSTed
+        '''
         user = form.save()
         login(self.request, user)
         return redirect('students:quiz_list')
@@ -140,21 +142,27 @@ class TeacherSignUpView(CreateView):
 
 @method_decorator([login_required, teacher_required], name='dispatch')
 class QuizListView(ListView):
+    '''
+        Basic view of all the quizzes created by or shared with the teacher.
+    '''
     model = Quiz
     ordering = ('name', )
     context_object_name = 'quizzes'
     template_name = 'teachers/quiz_change_list.html'
 
     def get_queryset(self):
-        queryset = self.request.user.quizzes \
-            .select_related('subject') \
-            .annotate(questions_count=Count('questions', distinct=True)) \
-            .annotate(taken_count=Count('taken_quizzes', distinct=True))
-        return queryset
+        queryset = self.request.user.quizzes.select_related('subject')
+        shared_quizzes_queryset = self.request.user.shared_quizzes.select_related('subject')
+        
+        return (queryset | shared_quizzes_queryset) \
+            .annotate(questions_count=Count('questions', distinct=True)).annotate(taken_count=Count('taken_quizzes', distinct=True))
 
 
 @method_decorator([login_required, teacher_required], name='dispatch')
 class QuizCreateView(CreateView):
+    '''
+        Basic view for creating a quiz.
+    '''
     model = Quiz
     fields = ('name', 'subject', )
     template_name = 'teachers/quiz_add_form.html'
@@ -169,6 +177,9 @@ class QuizCreateView(CreateView):
 
 @method_decorator([login_required, teacher_required], name='dispatch')
 class QuizUpdateView(UpdateView):
+    '''
+        View for updating a quiz. Delete button is not visible to Shared owners.
+    '''
     model = Quiz
     fields = ('name', 'subject', )
     context_object_name = 'quiz'
@@ -176,22 +187,20 @@ class QuizUpdateView(UpdateView):
 
     def get_context_data(self, **kwargs):
         kwargs['questions'] = self.get_object().questions.annotate(choices_count=Count('choices'))
+        kwargs['shared_quiz'] = (self.get_object() in self.request.user.shared_quizzes.all())
         return super().get_context_data(**kwargs)
 
     def get_queryset(self):
-        '''
-        This method is an implicit object-level permission management
-        This view will only match the ids of existing quizzes that belongs
-        to the logged in user.
-        '''
-        return self.request.user.quizzes.all()
+        return (self.request.user.quizzes.all() | self.request.user.shared_quizzes.all())
 
     def get_success_url(self):
         return reverse('teachers:quiz_change', kwargs={'pk': self.object.pk})
 
-
 @method_decorator([login_required, teacher_required], name='dispatch')
 class QuizDeleteView(DeleteView):
+    '''
+        View for deleting a quiz. Shared owners can't delete the quiz.
+    '''
     model = Quiz
     context_object_name = 'quiz'
     template_name = 'teachers/quiz_delete_confirm.html'
@@ -203,11 +212,14 @@ class QuizDeleteView(DeleteView):
         return super().delete(request, *args, **kwargs)
 
     def get_queryset(self):
-        return self.request.user.quizzes.all()
+        return (self.request.user.quizzes.all() | self.request.user.shared_quizzes.all())
 
 
 @method_decorator([login_required, teacher_required], name='dispatch')
 class QuizResultsView(DetailView):
+    '''
+        Basic view for quiz results. Shared owners can also view this.
+    '''
     model = Quiz
     context_object_name = 'quiz'
     template_name = 'teachers/quiz_results.html'
@@ -223,20 +235,24 @@ class QuizResultsView(DetailView):
             'quiz_score': quiz_score
         }
         kwargs.update(extra_context)
+        print(kwargs)
         return super().get_context_data(**kwargs)
 
     def get_queryset(self):
-        return self.request.user.quizzes.all()
+        return (self.request.user.quizzes.all() | self.request.user.shared_quizzes.all())
 
 
 @login_required
 @teacher_required
 def question_add(request, pk):
-    # By filtering the quiz by the url keyword argument `pk` and
-    # by the owner, which is the logged in user, we are protecting
-    # this view at the object-level. Meaning only the owner of
-    # quiz will be able to add questions to it.
-    quiz = get_object_or_404(Quiz, pk=pk, owner=request.user)
+    '''
+        View for adding a question. Shared owners of the quiz can add a question.
+    '''
+    quiz = Quiz.objects.filter(pk=pk, owner=request.user).first()
+    if not quiz:
+        quiz = request.user.shared_quizzes.filter(pk=pk).first()
+    if not quiz:
+        return HttpResponseNotFound("Can't add question to this quiz")
 
     if request.method == 'POST':
         form = QuestionForm(request.POST)
@@ -253,8 +269,40 @@ def question_add(request, pk):
 
 @login_required
 @teacher_required
+def share_with_teacher(request, pk):
+    '''
+        View for sharing a quiz with a teacher. Won't accept if the username provided doesn't match with
+        any teacher's username.
+    '''
+    quiz = get_object_or_404(Quiz, pk=pk, owner=request.user)
+
+    if request.method == 'POST':
+        teacher_name = request.POST.get('username')
+        teacher = User.objects.filter(username=teacher_name, is_teacher=True).first()
+        if not teacher:
+            messages.error(request, f"Teacher with username {teacher_name} does not exists")
+            return redirect('teachers:quiz_share', quiz.pk)
+        quiz.shared_owners.add(teacher)
+        quiz.save()
+        messages.success(request, f"Quiz successfully shared with {teacher_name}")
+        return redirect('teachers:quiz_change', quiz.pk)
+    else:
+        form = ShareTeacherForm()
+    
+    return render(request, 'teachers/quiz_share.html', {'quiz': quiz, 'form': form})
+
+
+@login_required
+@teacher_required
 def question_change(request, quiz_pk, question_pk):
-    quiz = get_object_or_404(Quiz, pk=quiz_pk, owner=request.user)
+    '''
+        View for changing a question. Shared owners of the quiz can change a question.
+    '''
+    quiz = Quiz.objects.filter(pk=quiz_pk, owner=request.user).first()
+    if not quiz:
+        quiz = request.user.shared_quizzes.filter(pk=quiz_pk).first()
+    if not quiz:
+        return HttpResponseNotFound("Can't add question to this quiz")
     question = get_object_or_404(Question, pk=question_pk, quiz=quiz)
     
     AnswerFormSet = inlineformset_factory(
@@ -288,9 +336,11 @@ def question_change(request, quiz_pk, question_pk):
         'formset': formset
     })
 
-
 @method_decorator([login_required, teacher_required], name='dispatch')
 class QuestionDeleteView(DeleteView):
+    '''
+        View for deleting a question. Shared owners of the quiz can also delete the question.
+    '''
     model = Question
     context_object_name = 'question'
     template_name = 'teachers/question_delete_confirm.html'
@@ -307,13 +357,18 @@ class QuestionDeleteView(DeleteView):
         return super().delete(request, *args, **kwargs)
 
     def get_queryset(self):
-        return Question.objects.filter(quiz__owner=self.request.user)
+        queryset = Question.objects.filter(quiz__owner=self.request.user)
+        shared_quizzes = self.request.user.shared_quizzes.all()
+        for shared_quiz in shared_quizzes:
+            queryset = (queryset | Question.objects.filter(quiz=shared_quiz))
+        return queryset
 
     def get_success_url(self):
         question = self.get_object()
         return reverse('teachers:quiz_change', kwargs={'pk': question.quiz_id})
 
 def main(request):
+    # Homepage
     if request.user.is_authenticated:
         if request.user.is_teacher:
             return redirect('teachers:quiz_change_list')

@@ -4,11 +4,17 @@ from django.utils.html import escape, mark_safe
 
 
 class User(AbstractUser):
+    '''
+        Basic User model for the users. Srudent uses this model as foreign-key. No separate Teacher model is created.
+    '''
     is_student = models.BooleanField(default=False)
     is_teacher = models.BooleanField(default=False)
 
 
 class Subject(models.Model):
+    '''
+        Teachers can create quizzes in subjects. Students can take them based on their interests.
+    '''
     name = models.CharField(max_length=30)
     color = models.CharField(max_length=7, default='#007bff')
 
@@ -23,9 +29,13 @@ class Subject(models.Model):
 
 
 class Quiz(models.Model):
+    '''
+        Basic Quiz model when a quiz is created by teacher. Quizzes can be shared with teachers (stored in shared_owners variable).
+    '''
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quizzes')
     name = models.CharField(max_length=255)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='quizzes')
+    shared_owners = models.ManyToManyField(User, related_name='shared_quizzes')
 
     def __str__(self):
         return self.name
@@ -39,6 +49,9 @@ class Question(models.Model):
         return self.text
 
 class Choice(models.Model):
+    '''
+        A question can have multiple choices.
+    '''
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='choices')
     text = models.CharField('Choice', max_length=255)
     is_correct = models.BooleanField('Correct choice', default=False)
@@ -64,6 +77,9 @@ class Student(models.Model):
 
 
 class TakenQuiz(models.Model):
+    '''
+        When a student completes the quiz, this instance gets created. Quiz score is stored in this model.
+    '''
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='taken_quizzes')
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='taken_quizzes')
     score = models.FloatField()
@@ -71,5 +87,10 @@ class TakenQuiz(models.Model):
 
 
 class StudentAnswer(models.Model):
+    '''
+        This refers to Student's answer in quiz. The answer can have multiple choices. Score is awarded based on this answer.
+        The Answer is correct only if all the choices marked by the student are correct choices and no correct choice is left in the actual answer.
+        No partial marking/negative marking .
+    '''
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='quiz_answers')
     answer = models.ManyToManyField(Choice, related_name='+')
