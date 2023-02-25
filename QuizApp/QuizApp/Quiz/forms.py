@@ -93,19 +93,13 @@ class TakeQuizForm(forms.ModelForm):
         fields = ('answer', )
 
     def __init__(self, *args, **kwargs):
-        try:
-            question = kwargs.pop('question')
-            super().__init__(*args, **kwargs)
-            self.fields['answer'].queryset = question.choices
-        except Exception as e:
-            print(e)
+        question = kwargs.pop('question')
+        super().__init__(*args, **kwargs)
+        self.fields['answer'].queryset = question.choices
 
     def save(self, commit=True, student=None, *args, **kwargs):
-        try:
-            model = StudentAnswer.objects.create(student=student)
-            model.answer.add(*self.cleaned_data.get('answer'))
-            if commit:
-                model.save()
-            return model
-        except Exception as e:
-            print(e)
+        model = StudentAnswer.objects.create(student=student)
+        model.answer.add(*self.cleaned_data.get('answer'))
+        if commit:
+            model.save()
+        return model
