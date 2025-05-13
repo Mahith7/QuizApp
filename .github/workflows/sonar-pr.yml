@@ -80,38 +80,38 @@
 name: SonarCloud Analysis
 
 on:
-  push:
-    branches: [ main, testtt ]
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches: [ main, testtt ]
 
 jobs:
   sonarcloud:
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: c6fd71374de8ede7f1d2829dbf668e9d30a53bfd
 
     steps:
-      # 1) Checkout code with full history for PR diff
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      # 2) Set up Java (required by the scanner)
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 17
 
-      # 3) Run SonarCloud via the official action
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         with:
-          organization: Mahith7           # ← your SonarCloud org key (lowercase)
-          projectKey: Mahith7_QuizApp    # ← your SonarCloud project key
-          projectName: QuizApp           # ← human-friendly name shown in UI
-          # optional if your sources aren’t at repo root:
-          # projectBaseDir: QuizApp/QuizApp
-        env:
-          SONAR_TOKEN: c6fd71374de8ede7f1d2829dbf668e9d30a53bfd
-
-      # 4) (No fallback needed) The action itself fails on a red gate
+          projectBaseDir: .              # if your code lives in the repo root
+          args: >
+            -Dsonar.organization=Mahith7
+            -Dsonar.projectKey=Mahith7_QuizApp
+            -Dsonar.sources=.
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.branch=${{ github.head_ref }}
+            -Dsonar.pullrequest.base=${{ github.base_ref }}
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
