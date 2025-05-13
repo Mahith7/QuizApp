@@ -1,0 +1,39 @@
+name: SonarCloud Main Analysis
+
+# Trigger on every push to main
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sonar-init:
+    name: Seed SonarCloud on Main
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: c6fd71374de8ede7f1d2829dbf668e9d30a53bfd
+    steps:
+      # 1) grab your code
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0       # so scanner can see full history if needed
+
+      # 2) install Java 17 (required by the scanner)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # 3) run the SonarCloud Action in “trunk” mode
+      - name: SonarCloud Initial Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          # If your code lives at the repo root, leave base dir as “.”
+          projectBaseDir: .
+          args: >
+            -Dsonar.organization=mahith7
+            -Dsonar.projectKey=mahith7_quizapp
+            -Dsonar.sources=.
+            -Dsonar.host.url=https://sonarcloud.io
+            # no PR parameters here—this is a “full-repo” scan
