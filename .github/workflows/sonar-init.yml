@@ -36,4 +36,3 @@ jobs:
             -Dsonar.projectKey=mahith7_quizapp
             -Dsonar.sources=.
             -Dsonar.host.url=https://sonarcloud.io
-            # no PR parameters here—this is a “full-repo” scan
