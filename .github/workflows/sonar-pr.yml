@@ -107,8 +107,8 @@ jobs:
         with:
           projectBaseDir: .              # if your code lives in the repo root
           args: >
-            -Dsonar.organization=Mahith7
-            -Dsonar.projectKey=Mahith7_QuizApp
+            -Dsonar.organization=mahith7
+            -Dsonar.projectKey=mahith7_quizapp
             -Dsonar.sources=.
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
             -Dsonar.pullrequest.branch=${{ github.head_ref }}
