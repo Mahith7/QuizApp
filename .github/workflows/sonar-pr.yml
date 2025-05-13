@@ -30,16 +30,16 @@ jobs:
           curl -sSL -o "$SCANNER_ZIP" \
             https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.9.0.3756-linux.zip
           unzip -q "$SCANNER_ZIP" -d scanner
-          echo "::add-path::${{ github.workspace }}/scanner/sonar-scanner-*/bin"
+          echo "${{ github.workspace }}/scanner/sonar-scanner-*/bin" >> $GITHUB_PATH
 
       # 4. Run SonarQube analysis in PR mode, waiting for gate
       - name: SonarQube Analysis
         env:
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_TOKEN: c6fd71374de8ede7f1d2829dbf668e9d30a53bfd
         run: |
           sonar-scanner \
-            -Dsonar.projectKey=${{ github.repository }} \
+            -Dsonar.projectKey=Mahith7_QuizApp \
             -Dsonar.projectName="${{ github.repository }}" \
             -Dsonar.sources=. \
             -Dsonar.host.url=${SONAR_HOST_URL} \
@@ -54,12 +54,15 @@ jobs:
 
       # 5a. (Optional fallback for Community Edition)
       # If you’re on CE, the scanner won’t fail on gate; you can poll the API yourself:
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Enforce Quality Gate (fallback)
         if: always()  # runs even if the previous step “succeeds” in CE
         env:
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
-          PROJECT_KEY:    ${{ github.repository }}
+          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_TOKEN: c6fd71374de8ede7f1d2829dbf668e9d30a53bfd
+          PROJECT_KEY: Mahith7_QuizApp
         run: |
           STATUS=$(
             curl -s -u "${SONAR_TOKEN}:" \
