@@ -33,6 +33,6 @@ jobs:
           projectBaseDir: .
           args: >
             -Dsonar.organization=mahith7
-            -Dsonar.projectKey=mahith7_quizapp
+            -Dsonar.projectKey=Mahith7_QuizApp
             -Dsonar.sources=.
             -Dsonar.host.url=https://sonarcloud.io
