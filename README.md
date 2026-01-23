@@ -1,4 +1,6 @@
 # QuizApp
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FMahith7%2FQuizApp.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FMahith7%2FQuizApp?ref=badge_shield)
+
 
 Basically, In this quiz app, Users can register as either Teacher or Student. <br />
 Teachers create quizzes and Students take the quizzes.<br />
@@ -19,3 +21,7 @@ Install the requirements. <br />
 Run `python manage.py runserver` to start the server.<br />
 Change the `ALLOWED_HOSTS` variable in `settings.py` file.<br />
 Do `python manage.py makemigrations` to create the tables and create subjects as well.<br />
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FMahith7%2FQuizApp.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FMahith7%2FQuizApp?ref=badge_large)
